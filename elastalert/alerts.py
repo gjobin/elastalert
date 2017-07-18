@@ -834,13 +834,30 @@ class SnsAlerter(Alerter):
         self.aws_region = self.rule.get('aws_region', 'us-east-1')
         self.profile = self.rule.get('boto_profile', None)  # Deprecated
         self.profile = self.rule.get('aws_profile', None)
+        self.aws_cloudwatch_output = self.rule.get('aws_cloudwatch_output', False)
+        self.aws_account_id = self.rule.get('aws_account_id', '')
 
     def create_default_title(self, matches):
         subject = 'ElastAlert: %s' % (self.rule['name'])
         return subject
 
+    def create_cloudwatch_output(self, matches, subject, body):
+        return json.dumps({
+            "AlarmName": subject,
+            "AlarmDescription":body,
+            "AWSAccountId":self.aws_account_id,
+            "NewStateValue":"ALARM",
+            "NewStateReason":"ElastAlert triggered the alarm",
+            "StateChangeTime":datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "+0000",
+            "Region":"ElastAlert",
+            "OldStateValue":"OK",
+        })
+
     def alert(self, matches):
+        subject = self.create_title(matches)
         body = self.create_alert_body(matches)
+        if self.aws_cloudwatch_output:
+            body = self.create_cloudwatch_output(matches, subject, body)
 
         session = boto3.Session(
             aws_access_key_id=self.aws_access_key_id,
@@ -852,7 +869,7 @@ class SnsAlerter(Alerter):
         sns_client.publish(
             TopicArn=self.sns_topic_arn,
             Message=body,
-            Subject=self.create_title(matches)
+            Subject=subject
         )
         elastalert_logger.info("Sent sns notification to %s" % (self.sns_topic_arn))
 

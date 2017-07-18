@@ -1373,6 +1373,10 @@ Optional:
 
 ``profile``: The AWS profile to use. If none specified, the default will be used.
 
+``aws_cloudwatch_output``: When set to true, converts the message to CloudWatch format. Default is false.
+
+``aws_account_id``: The AWS account Id used to convert the message to CloudWatch format.
+
 HipChat
 ~~~~~~~
 
